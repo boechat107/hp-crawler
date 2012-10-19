@@ -1,12 +1,9 @@
 (ns hp-crawler.downloader
-    (:require
-      [clj-http.client :as http]
-      [clj-dns.core :as dns]
-      )
-    (:import
-      [org.xbill.DNS Type]
-      )
-    )
+  (:require
+   [clj-http.client :as http]
+   [clj-dns.core :as dns])
+  (:import
+   [org.xbill.DNS Type]))
 
 ; ### TODO: 
 ; * try curl
@@ -16,7 +13,10 @@
 (defn download-page
   "todo: macro with-connection-pool, more than one thread"
   [url]
-  (http/get url))
+  (try
+    (http/get url)
+    (catch Exception e
+      (println (format "Unkown error:\n%s" e)))))
 
 
 (defn get-domain-ip
