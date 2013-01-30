@@ -2,6 +2,7 @@
   (:require
     [clojure.string :as s]
     [hp-crawler.utils :as ut]
+    [hp-crawler.htmlunit-tools :as hu]
     )
   )
 
@@ -15,6 +16,7 @@
 (def ^{:doc "Simpler URL with blank fields (formatted to easily use the format
             function) for to query airport tickets. Only the airport nicknames are
             used.The default values are roundtrip and just one adult passenger."}
+  ex-simp-seeds
   "http://www.mundi.com.br/flightmetasearch?airport1=FLN&airport2=BHZ&triptype=1&date1=01%2F02%2F2013&date2=03%2F02%2F2013&numadults=1&numchildren=0&numbabies=0"
   )
 
@@ -42,4 +44,29 @@
     (-> url-seed
         (s/replace #"date1=[F\d%]*&" " hello ")
         ))
+  )
+
+; ============== Parsing results, flight tickets ==============================
+
+(defn get-minimum-prices
+  "Returns a map with the minimum prices of each flight company. The prices are
+  extracted from the given htmlunit page object."
+  [page]
+  (let [all-prices (hu/get-nodes-by-xpath page "//tr[@class='airlineCB']/td/label")]
+    all-prices
+    (hu/get-nodes-by-xpath page "//label[@for='CKBairlineAD']")
+    )
+  )
+
+(defn scrap
+  "Prepares a seed URL and returns information from the target page."
+  []
+  (let [url (make-seed "fln" "bhz" "01-02-2013" "03-02-2013")]
+    (-> url 
+         hu/browse-page
+         get-minimum-prices
+         (.get 0)
+         (.asText)
+         )
+    )
   )
