@@ -16,7 +16,7 @@
   (try
     (http/get url)
     (catch Exception e
-      (println (format "Unkown error:\n%s" e)))))
+      (println (format "Unknown error:\n%s" e)))))
 
 
 (defn get-domain-ip

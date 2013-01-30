@@ -6,7 +6,7 @@
 
 (def ^{:doc "The content of the web page whose analysis is desired."}
      web-file
-     "resources/imaging_info.shtml")
+     "resources/mundi_passagens.html")
 
 (defn get-file-content 
   ([] (get-file-content web-file))
@@ -19,7 +19,7 @@
        (map :attrs)))
 
 (defn list-inputs!
-  ([] (list-inputs nil))
+  ([] (list-inputs! nil))
   ([form-id]
    (let [page (html/html-resource (get-file-content))]
      (if form-id
