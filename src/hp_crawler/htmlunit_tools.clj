@@ -8,7 +8,7 @@
   "Returns a htmlunit page object for the given URL."
   [url]
   {:pre [(string? url)]}
-  (-> BrowserVersion/FIREFOX_10
+  (-> BrowserVersion/FIREFOX_3_6
       (WebClient.)
       (.getPage url)))
 

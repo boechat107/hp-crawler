@@ -62,16 +62,15 @@
   "Prepares a seed URL and returns information from the target page."
   []
   (let [url (make-seed "fln" "bhz" "01-02-2013" "03-02-2013")
-        nodes (-> url
-                  hu/browse-page get-minimum-prices)
+        browser (hu/browse-page url)
         ]
-    (println (.size nodes))
-    (when (pos? (.size nodes)) 
+    (locking browser 
+      (println "wainting...")
+      (.wait browser 30000))
+    (let [nodes (get-minimum-prices browser)]
       (doseq [idx (range (.size nodes))] 
         (->> (.get nodes idx)
              (.getTextContent)
-             (println)
-             )
-        ))
+             (println))))
     )
   )
