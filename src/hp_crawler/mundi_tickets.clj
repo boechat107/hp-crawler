@@ -52,21 +52,26 @@
   "Returns a map with the minimum prices of each flight company. The prices are
   extracted from the given htmlunit page object."
   [page]
-  (let [all-prices (hu/get-nodes-by-xpath page "//tr[@class='airlineCB']/td/label")]
-    all-prices
-    (hu/get-nodes-by-xpath page "//label[@for='CKBairlineAD']")
-    )
+  (->> "//div[@id='menu_busca']//form[@id='filters']//fieldset[@id='airlinefilter']"
+       (hu/get-nodes-by-xpath page)
+       )
+    
   )
 
 (defn scrap
   "Prepares a seed URL and returns information from the target page."
   []
-  (let [url (make-seed "fln" "bhz" "01-02-2013" "03-02-2013")]
-    (-> url 
-         hu/browse-page
-         get-minimum-prices
-         (.get 0)
-         (.asText)
-         )
+  (let [url (make-seed "fln" "bhz" "01-02-2013" "03-02-2013")
+        nodes (-> url
+                  hu/browse-page get-minimum-prices)
+        ]
+    (println (.size nodes))
+    (when (pos? (.size nodes)) 
+      (doseq [idx (range (.size nodes))] 
+        (->> (.get nodes idx)
+             (.getTextContent)
+             (println)
+             )
+        ))
     )
   )
