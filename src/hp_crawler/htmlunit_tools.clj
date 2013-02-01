@@ -1,7 +1,7 @@
 (ns hp-crawler.htmlunit-tools
   (:import
     [com.gargoylesoftware.htmlunit WebClient BrowserVersion]
-    [com.gargoylesoftware.htmlunit.h WebClient BrowserVersion]
+    [com.gargoylesoftware.htmlunit.html HtmlPage DomNode]
     )
   )
 
@@ -9,6 +9,7 @@
   "Stops the htmlunit main thread for an amount of time wt. Returns the same page
   object."
   [page wt]
+  {:pre [(instance? HtmlPage page)]}
   (when (pos? wt)
     (locking page
       (.wait page wt)))
@@ -31,4 +32,5 @@
   "Returns htmlunit nodes that represents html elements for the given xpath and 
   parent node."
   [node xpath]
+  {:pre [(instance? DomNode node) (string? xpath)]}
   (.getByXPath node xpath))
