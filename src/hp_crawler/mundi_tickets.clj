@@ -1,5 +1,6 @@
 (ns hp-crawler.mundi-tickets
   (:require
+    [hp-crawler.save-data :as save]
     [clojure.string :as s]
     [hp-crawler.utils :as ut]
     [hp-crawler.htmlunit-tools :as hu]
@@ -19,6 +20,10 @@
   ex-simp-seeds
   "http://www.mundi.com.br/flightmetasearch?airport1=FLN&airport2=BHZ&triptype=1&date1=01%2F02%2F2013&date2=03%2F02%2F2013&numadults=1&numchildren=0&numbabies=0"
   )
+
+(def ^{:doc "The name of the file where the extracted information are stored."}
+  file-storage
+  "data/mundi_tickets.txt")
 
 (defn make-seed
   "Returns a query URL for flight tickets at www.mundi.com.br.
@@ -51,6 +56,7 @@
 (defn get-minimum-prices
   "Returns a map with the minimum prices of each flight company. The prices are
   extracted from the given htmlunit page object."
+  ; TODO: check if the data was really fetched, waiting and retrying if necessary.
   [page]
   (->> "//div[@id='menu_busca']//form[@id='filters']//fieldset[@id='airlinefilter']//tr[@class='airlineCB']"
        (hu/get-nodes-by-xpath page)
@@ -60,9 +66,12 @@
                {})))
 
 (defn scrap
-  "Prepares a seed URL and returns information from the target page."
+  "Prepares a seed URL and returns information from the target page. As the scraper
+  shall run just once in a hour, there is no loop in this function."
+  ; TODO: log activities 
   []
   (let [url (make-seed "fln" "bhz" "01-02-2013" "03-02-2013")
         browser (hu/browse-page url 30000)]
-    (println "Waiting the javascripts to run...")
-    (get-minimum-prices browser)))
+;    (println "Waiting the javascripts to run...")
+    (->> (get-minimum-prices browser)
+         (save/date-time-map->file! file-storage))))
