@@ -67,11 +67,17 @@
 
 (defn scrap
   "Prepares a seed URL and returns information from the target page. As the scraper
-  shall run just once in a hour, there is no loop in this function."
+  shall run just once in a hour, there is no loop in this function.
+  Ex.: (scrap 'fln' 'bhz' '01-02-2013' '03-02-2013')"
   ; TODO: log activities 
-  []
-  (let [url (make-seed "fln" "bhz" "01-02-2013" "03-02-2013")
+  [dep-airp ret-airp dep-date ret-date]
+  (let [url (make-seed dep-airp ret-airp dep-date ret-date)
         browser (hu/browse-page url 30000)]
 ;    (println "Waiting the javascripts to run...")
-    (->> (get-minimum-prices browser)
-         (save/date-time-map->file! file-storage))))
+    (save/date-time-map->file! 
+      file-storage 
+      (-> (get-minimum-prices browser) 
+          (assoc :dep-airp dep-airp
+                 :ret-airp ret-airp 
+                 :dep-date dep-date
+                 :ret-date ret-date)))))

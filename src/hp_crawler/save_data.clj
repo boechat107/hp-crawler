@@ -11,12 +11,13 @@
 
 (def ^{:doc "The format of the processing date of a data record."}
   rec-format
-  (tf/formatter "YYYY-MM-dd HH:mm:ss"))
+  (tf/formatters :date-hour-minute-second))
 
 (defn date-time-map->file!
   "Appends a new record to the given filename, where a record is composed of
   date-time and a clojure map, separated by a semicolon."
   [filename data-map]
   (spit filename 
-        (s/join ";" [(tf/unparse rec-format (tl/local-now)), (str data-map "\n")])
+        (s/join ";" [(tl/format-local-time (tl/local-now) :date-hour-minute-second)
+                     (str data-map "\n")])
         :append true))

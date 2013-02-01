@@ -23,6 +23,10 @@
   ([url] (browse-page url 0))
   ([url wt]
    {:pre [(string? url)]}
+   (-> (java.util.logging.Logger/getLogger "com.gargoylesoftware")
+       (.setLevel java.util.logging.Level/OFF))
+;   (-> (System/getProperties)
+;       (.put "org.apache.commons.logging.simplelog.defaultlog" "warn"))
    (-> BrowserVersion/FIREFOX_3_6
        (WebClient.)
        (.getPage url)
