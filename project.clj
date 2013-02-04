@@ -5,6 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [com.taoensso/timbre "1.3.0"]
+                 [slingshot "0.10.3"]
                  [clj-time "0.4.4"]
                  [enlive "1.0.0"]
                  [clj-tagsoup "0.3.0"]

@@ -12,6 +12,7 @@
   {:pre [(instance? HtmlPage page)]}
   (when (pos? wt)
     (locking page
+      (println "Waiting scripts...")
       (.wait page wt)))
   page)
 
@@ -23,10 +24,9 @@
   ([url] (browse-page url 0))
   ([url wt]
    {:pre [(string? url)]}
+   ;; Suppress Htmlunit logs.
    (-> (java.util.logging.Logger/getLogger "com.gargoylesoftware")
-       (.setLevel java.util.logging.Level/OFF))
-;   (-> (System/getProperties)
-;       (.put "org.apache.commons.logging.simplelog.defaultlog" "warn"))
+       (.setLevel java.util.logging.Level/INFO))
    (-> BrowserVersion/FIREFOX_3_6
        (WebClient.)
        (.getPage url)
@@ -38,3 +38,9 @@
   [node xpath]
   {:pre [(instance? DomNode node) (string? xpath)]}
   (.getByXPath node xpath))
+
+(defn refresh-page!
+  "Refreshes the page of the given object."
+  [page]
+  {:pre [(instance? HtmlPage page)]}
+  (.refresh page))

@@ -3,9 +3,9 @@
     [hp-crawler.save-data :as save]
     [clojure.string :as s]
     [hp-crawler.utils :as ut]
-    [hp-crawler.htmlunit-tools :as hu]
-    )
-  )
+    [hp-crawler.htmlunit-tools :as hu])
+  (:use 
+    [slingshot.slingshot :only [throw+ try+]]))
 
 (def ^{:doc "URL with the fields for a query. The default values are roundtrip and
             just one adult passenger.
@@ -56,14 +56,18 @@
 (defn get-minimum-prices
   "Returns a map with the minimum prices of each flight company. The prices are
   extracted from the given htmlunit page object."
-  ; TODO: check if the data was really fetched, waiting and retrying if necessary.
   [page]
-  (->> "//div[@id='menu_busca']//form[@id='filters']//fieldset[@id='airlinefilter']//tr[@class='airlineCB']"
-       (hu/get-nodes-by-xpath page)
-       seq
-       (reduce #(let [[comp price] (-> (.getTextContent %2) (s/split #" "))]
-                  (assoc %1 comp (Integer/parseInt price)))
-               {})))
+  (let [res (->> "//div[@id='menu_busca']//form[@id='filters']//fieldset[@id='airlinefilter']//tr[@class='airlineCB']"
+                 (hu/get-nodes-by-xpath page)
+                 seq
+                 ;; Parses the company name and its corresponding ticket price.
+                 ;; Like: 'Tam 700'
+                 (reduce #(let [[comp price] (-> (.getTextContent %2) (s/split #" "))]
+                            (assoc %1 comp (Integer/parseInt price)))
+                         {}))]
+    (if (empty? res)
+      (throw+ {:type :min-price :message "Fail to fetch minimum prices information."})
+      res)))
 
 (defn scrap
   "Prepares a seed URL and returns information from the target page. As the scraper
@@ -72,12 +76,30 @@
   ; TODO: log activities 
   [dep-airp ret-airp dep-date ret-date]
   (let [url (make-seed dep-airp ret-airp dep-date ret-date)
-        browser (hu/browse-page url 30000)]
-;    (println "Waiting the javascripts to run...")
-    (save/date-time-map->file! 
-      file-storage 
-      (-> (get-minimum-prices browser) 
-          (assoc :dep-airp dep-airp
-                 :ret-airp ret-airp 
-                 :dep-date dep-date
-                 :ret-date ret-date)))))
+        browser (hu/browse-page url 40000)]
+    (ut/try-times
+      2
+      (try+
+        ;; Try to fetch and parse the data.
+        (println "Trying to parse...")
+        (save/date-time-map->file! 
+          file-storage 
+          (-> (get-minimum-prices browser) 
+              (assoc :dep-airp dep-airp
+                     :ret-airp ret-airp 
+                     :dep-date dep-date
+                     :ret-date ret-date)))
+        (println "Page parsed!")
+        true ; to stop the function try-times
+        (catch [:type :min-price] e
+          (println e)
+          ;; Sleeps for a random time.
+          (Thread/sleep (+ 1000 (rand-int 5000)))
+          ;; If the data was not fetched, the page is refreshed.
+          (println "Refreshing the page...")
+          (hu/refresh-page! browser)
+          (hu/wait-scripts! browser 40000)
+          nil)))
+    ))
+
+
