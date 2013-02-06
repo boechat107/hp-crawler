@@ -23,7 +23,7 @@
 
 (def ^{:doc "The name of the file where the extracted information are stored."}
   file-storage
-  "data/mundi_tickets.txt")
+  "./mundi_tickets.txt")
 
 (defn make-seed
   "Returns a query URL for flight tickets at www.mundi.com.br.
@@ -65,41 +65,49 @@
                  (reduce #(let [[comp price] (-> (.getTextContent %2) (s/split #" "))]
                             (assoc %1 comp (Integer/parseInt price)))
                          {}))]
-    (if (empty? res)
-      (throw+ {:type :min-price :message "Fail to fetch minimum prices information."})
+    (when (not (empty? res))
       res)))
+
+(defn extract-data
+  "Executes the scrap tasks and verify the results, reloading the website if the
+  tasks fail."
+  [page wt]
+  (hu/wait-scripts! page wt)
+  (ut/try-times
+    2
+    (println "Trying to fetch data...")
+    (let [data (get-minimum-prices page)]
+      (if data
+        data
+        (do
+          (println "Not fetched!")
+          ;; Sleeps for a random time.
+          (Thread/sleep (+ 1000 (rand-int 5000)))
+          ;; If the data was not fetched, the page is refreshed.
+          (hu/refresh-page! page)
+          (throw+ {:type ::min-price, :message "Fail to fetch prices"}))))))
 
 (defn scrap
   "Prepares a seed URL and returns information from the target page. As the scraper
   shall run just once in a hour, there is no loop in this function.
   Ex.: (scrap 'fln' 'bhz' '01-02-2013' '03-02-2013')"
-  ; TODO: log activities 
-  [dep-airp ret-airp dep-date ret-date]
+  ; TODO: log activities using timbre
+  ([dep-airp ret-airp dep-date ret-date] 
+   (scrap file-storage dep-airp ret-airp dep-date ret-date))
+  ([filepath dep-airp ret-airp dep-date ret-date]
   (let [url (make-seed dep-airp ret-airp dep-date ret-date)
-        browser (hu/browse-page url 40000)]
-    (ut/try-times
-      2
-      (try+
-        ;; Try to fetch and parse the data.
-        (println "Trying to parse...")
-        (save/date-time-map->file! 
-          file-storage 
-          (-> (get-minimum-prices browser) 
-              (assoc :dep-airp dep-airp
-                     :ret-airp ret-airp 
-                     :dep-date dep-date
-                     :ret-date ret-date)))
-        (println "Page parsed!")
-        true ; to stop the function try-times
-        (catch [:type :min-price] e
-          (println e)
-          ;; Sleeps for a random time.
-          (Thread/sleep (+ 1000 (rand-int 5000)))
-          ;; If the data was not fetched, the page is refreshed.
-          (println "Refreshing the page...")
-          (hu/refresh-page! browser)
-          (hu/wait-scripts! browser 40000)
-          nil)))
-    ))
+        wait-time 40000 ; milliseconds
+        browser (hu/browse-page url)]
+    (try+
+      (save/date-time-map->file! 
+        filepath
+        (-> (extract-data browser wait-time)
+            (assoc :dep-airp dep-airp
+                   :ret-airp ret-airp 
+                   :dep-date dep-date
+                   :ret-date ret-date)))
+      (catch [:type ::min-price] e
+        (println (:message e)))) 
+    )))
 
 

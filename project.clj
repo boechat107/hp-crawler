@@ -7,6 +7,7 @@
                  [com.taoensso/timbre "1.3.0"]
                  [slingshot "0.10.3"]
                  [clj-time "0.4.4"]
+                 [org.clojure/tools.cli "0.2.2"]
                  [enlive "1.0.0"]
                  [clj-tagsoup "0.3.0"]
                  [net.sourceforge.htmlunit/htmlunit "2.11"]
@@ -14,4 +15,5 @@
                  [com.brweber2/clj-dns "0.0.2"]]
   :dev-dependencies [[lein-marginalia "0.7.1"]]
   :resource-paths ["resources"]
+  :main hp-crawler.core
   )
