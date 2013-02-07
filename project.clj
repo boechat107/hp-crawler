@@ -11,6 +11,7 @@
                  [enlive "1.0.0"]
                  [clj-tagsoup "0.3.0"]
                  [net.sourceforge.htmlunit/htmlunit "2.11"]
+                 [clj-webdriver "0.6.0-beta2"]
                  [clj-http "0.5.6"]
                  [com.brweber2/clj-dns "0.0.2"]]
   :dev-dependencies [[lein-marginalia "0.7.1"]]

@@ -3,6 +3,9 @@
     [hp-crawler.save-data :as save]
     [clojure.string :as s]
     [hp-crawler.utils :as ut]
+    [clj-webdriver.core :as wc]
+    [clj-webdriver.wait :as ww]
+    [clj-webdriver.taxi :as wt]
     [hp-crawler.htmlunit-tools :as hu])
   (:use 
     [slingshot.slingshot :only [throw+ try+]]))
@@ -21,9 +24,7 @@
   "http://www.mundi.com.br/flightmetasearch?airport1=FLN&airport2=BHZ&triptype=1&date1=01%2F02%2F2013&date2=03%2F02%2F2013&numadults=1&numchildren=0&numbabies=0"
   )
 
-(def ^{:doc "The name of the file where the extracted information are stored."}
-  file-storage
-  "./mundi_tickets.txt")
+
 
 (defn make-seed
   "Returns a query URL for flight tickets at www.mundi.com.br.
@@ -55,24 +56,41 @@
 
 (defn get-minimum-prices
   "Returns a map with the minimum prices of each flight company. The prices are
-  extracted from the given htmlunit page object."
+  extracted from the given page object.
+  XPATH strings are used to select the desired elements of the page."
   [page]
-  (let [res (->> "//div[@id='menu_busca']//form[@id='filters']//fieldset[@id='airlinefilter']//tr[@class='airlineCB']"
-                 (hu/get-nodes-by-xpath page)
-                 seq
-                 ;; Parses the company name and its corresponding ticket price.
-                 ;; Like: 'Tam 700'
-                 (reduce #(let [[comp price] (-> (.getTextContent %2) (s/split #" "))]
-                            (assoc %1 comp (Integer/parseInt price)))
-                         {}))]
-    (when (not (empty? res))
-      res)))
+  (let [find-elem (fn [xp] (wc/find-elements page {:xpath xp}))
+        xp1 "//div[@id='menu_busca']//form[@id='filters']//fieldset[@id='airlinefilter']//tr[@class='airlineCB']"
+        ;; Parses the string result of xp1.
+        xp1-parser (fn [t] (s/split t #" |\n"))
+        xp1-elems (find-elem xp1)
+        ;; Sometimes, I don't know the reason, the layout of the site is different.
+        ;; So, I needed another xpath.
+        xp2 "//section[@id='filter-by-airline']//div[@class='box1']//li[@class='ui-item']"
+        ;; Parses the string result of xp2
+        ;; ("Múltiplas\nR$ 1041" "Gol\nR$ 2254" "Azul\nR$ 1097" "TRIP\nR$ 1274" "Tam\nR$ 1961")
+        xp2-parser (fn [t] (let [r (s/split t #" |\n")] [(first r) (peek r)]))
+        xp2-elems (find-elem xp2)
+        pt #(do (println (str %)) %)
+        res-to-map (fn [elems parser] 
+                     (->> elems
+                          (reduce #(let [[comp price] (-> (wt/text page %2)
+                                                          pt
+                                                          parser)]
+                                     (assoc %1 comp (Integer/parseInt price)))
+                                  {})))
+        found-elems? (fn [elems] (seq (filter #(wt/exists? page %) elems)))]
+    (cond 
+      (found-elems? xp1-elems) (res-to-map xp1-elems xp1-parser)
+      ;(map #(wt/text page %) xp1-elems)
+      (found-elems? xp2-elems) (res-to-map xp2-elems xp2-parser)
+      :else nil)
+    ))
 
 (defn extract-data
   "Executes the scrap tasks and verify the results, reloading the website if the
   tasks fail."
-  [page wt]
-  (hu/wait-scripts! page wt)
+  [page]
   (ut/try-times
     2
     (println "Trying to fetch data...")
@@ -84,30 +102,34 @@
           ;; Sleeps for a random time.
           (Thread/sleep (+ 1000 (rand-int 5000)))
           ;; If the data was not fetched, the page is refreshed.
-          (hu/refresh-page! page)
-          (throw+ {:type ::min-price, :message "Fail to fetch prices"}))))))
+          (wt/refresh page)
+          (throw+ {:type ::min-price, :message "Fail to fetch prices"})))))
+  )
 
 (defn scrap
   "Prepares a seed URL and returns information from the target page. As the scraper
   shall run just once in a hour, there is no loop in this function.
   Ex.: (scrap 'fln' 'bhz' '01-02-2013' '03-02-2013')"
   ; TODO: log activities using timbre
-  ([dep-airp ret-airp dep-date ret-date] 
-   (scrap file-storage dep-airp ret-airp dep-date ret-date))
-  ([filepath dep-airp ret-airp dep-date ret-date]
+  [filepath dep-airp ret-airp dep-date ret-date]
   (let [url (make-seed dep-airp ret-airp dep-date ret-date)
-        wait-time 40000 ; milliseconds
-        browser (hu/browse-page url)]
+        wait-time 10000 ; milliseconds
+        browser (wc/new-driver {:browser :firefox})]
+    ;; Sets the amount of time that must be wait when the desired elements of the
+    ;; page are not found. Useful for AJAX pages.
+    (ww/implicit-wait browser wait-time)
+    (wt/to browser url)
     (try+
-      (save/date-time-map->file! 
-        filepath
-        (-> (extract-data browser wait-time)
-            (assoc :dep-airp dep-airp
-                   :ret-airp ret-airp 
-                   :dep-date dep-date
-                   :ret-date ret-date)))
+      (let [res (-> (extract-data browser)
+                    (assoc :dep-airp dep-airp
+                           :ret-airp ret-airp 
+                           :dep-date dep-date
+                           :ret-date ret-date))]
+        (save/date-time-map->file! filepath res)
+        (wt/quit browser)
+        res)
       (catch [:type ::min-price] e
-        (println (:message e)))) 
-    )))
+        (println (:message e))
+        (wt/quit browser)))))
 
 
