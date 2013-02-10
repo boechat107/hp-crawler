@@ -60,7 +60,7 @@
   XPATH strings are used to select the desired elements of the page."
   [page]
   (let [find-elem (fn [xp] (wc/find-elements page {:xpath xp}))
-        xp1 "//div[@id='menu_busca']//form[@id='filters']//fieldset[@id='airlinefilter']//tr[@class='airlineCB']"
+        xp1 "//fieldset[@id='airlinefilter']//tr[@class='airlineCB' or @class=manyCB]"
         ;; Parses the string result of xp1.
         xp1-parser (fn [t] (s/split t #" |\n"))
         xp1-elems (find-elem xp1)
@@ -82,7 +82,6 @@
         found-elems? (fn [elems] (seq (filter #(wt/exists? page %) elems)))]
     (cond 
       (found-elems? xp1-elems) (res-to-map xp1-elems xp1-parser)
-      ;(map #(wt/text page %) xp1-elems)
       (found-elems? xp2-elems) (res-to-map xp2-elems xp2-parser)
       :else nil)
     ))
@@ -115,10 +114,28 @@
   (let [url (make-seed dep-airp ret-airp dep-date ret-date)
         wait-time 10000 ; milliseconds
         browser (wc/new-driver {:browser :firefox})]
+    ;; Opens the desired URL.
+    (wt/to browser url)
     ;; Sets the amount of time that must be wait when the desired elements of the
     ;; page are not found. Useful for AJAX pages.
-    (ww/implicit-wait browser wait-time)
-    (wt/to browser url)
+;    (ww/implicit-wait browser wait-time)
+    ;; Forces the browser to wait until the search progress bar disappear from the
+    ;; page. Only after this event the 'find-elements' routines must be executed.
+    (ww/wait-until browser
+                   ;; Function that has the browser as argument and returns a boolean
+                   ;; to indicate the threshold event.
+                   (fn [d]
+                     (let [find-elem (fn [xp]
+                                       (let [elem (wc/find-element d {:xpath xp})]
+                                         (when (wt/exists? d elem)
+                                           elem)))]
+                       ;; The progress bar of the two possible layouts of the page.
+                       (->> (or (find-elem "//div[@id='searchprogress']/p")
+                                (find-elem "//section[@id='loading']/p")) 
+                            (wt/visible? d)
+                            not)))
+                   wait-time
+                   1000)
     (try+
       (let [res (-> (extract-data browser)
                     (assoc :dep-airp dep-airp
