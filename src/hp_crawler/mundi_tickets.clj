@@ -60,7 +60,7 @@
   XPATH strings are used to select the desired elements of the page."
   [page]
   (let [find-elem (fn [xp] (wc/find-elements page {:xpath xp}))
-        xp1 "//fieldset[@id='airlinefilter']//tr[@class='airlineCB' or @class=manyCB]"
+        xp1 "//fieldset[@id='airlinefilter']//tr[@class='airlineCB' or @class='manyCB']"
         ;; Parses the string result of xp1.
         xp1-parser (fn [t] (s/split t #" |\n"))
         xp1-elems (find-elem xp1)
