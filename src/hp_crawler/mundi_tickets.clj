@@ -1,12 +1,15 @@
 (ns hp-crawler.mundi-tickets
   (:require
     [hp-crawler.save-data :as save]
-    [clojure.string :as s]
     [hp-crawler.utils :as ut]
+    [hp-crawler.htmlunit-tools :as hu] 
+    [clojure.string :as s]
     [clj-webdriver.core :as wc]
     [clj-webdriver.wait :as ww]
     [clj-webdriver.taxi :as wt]
-    [hp-crawler.htmlunit-tools :as hu])
+    [incanter.core :as ic]
+    [incanter.charts :as chart]
+    )
   (:use 
     [slingshot.slingshot :only [throw+ try+]]))
 
@@ -149,4 +152,19 @@
         (println (:message e))
         (wt/quit browser)))))
 
+;; ============== Data presentation  ==============================
+
+(defn price-trends
+  [req]
+  (let [{:keys [file departure-airport destination-airport 
+                departure-date returning-date]} 
+        req
+        flight-data (->> (save/file->dataset file)
+                         (ic/$where {:dep-airp departure-airport
+                                     :dep-date departure-date 
+                                     :ret-airp destination-airport 
+                                     :ret-date returning-date}))]
+    (->> flight-data 
+         (chart/time-series-plot :save-date "Tam" :data)
+         (ic/view))))
 

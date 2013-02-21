@@ -14,12 +14,15 @@
              ["-a1" "--departure-airport" "Departure airport (3 letters)"]
              ["-a2" "--destination-airport" "Destination airport (3 letters)"]
              ["-d1" "--departure-date" "Like dd-mm-yyyy or dd/mm/yyyy"]
-             ["-d2" "--returning-date" "Like dd-mm-yyyy or dd/mm/yyyy"])
+             ["-d2" "--returning-date" "Like dd-mm-yyyy or dd/mm/yyyy"]
+             ["-p" "--presentation" "Presents stored data" :flag true :default false])
         ;; Arguments of the flight ticket scraper.
         ft-args (map #(% opts) [:file :departure-airport :destination-airport 
                                 :departure-date :returning-date])]
     (cond
       ;; Prints the help message.
       (:help opts) (println banner)
+      ;; Presents the stored data.
+      (:presentation opts) (ft/price-trends (dissoc opts :help))
       ;; Executes the flight tickets scraper.
       (every? identity ft-args) (apply ft/scrap ft-args))))
